@@ -1,14 +1,5 @@
 import 'package:flutter/material.dart';
 
-enum YodNavigatorType {
-  pushNamed,
-  pushReplacementNamed,
-  pushNamedAndRemoveUntil,
-  pushNamedAndRemoveRemoveAll,
-  pop,
-  popUntil,
-}
-
 class YodNavigator extends NavigatorObserver {
   @override
   void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
@@ -62,12 +53,7 @@ class YodNavigator extends NavigatorObserver {
       return null;
     }
 
-    return _doPush(
-      context,
-      routeName,
-      arguments: arguments,
-      type: YodNavigatorType.pushNamed,
-    );
+    return _doPushNamed(context, routeName, arguments: arguments);
   }
 
   Future<dynamic> pushReplacementNamed(
@@ -82,12 +68,7 @@ class YodNavigator extends NavigatorObserver {
       return null;
     }
 
-    return _doPush(
-      context,
-      routeName,
-      arguments: arguments,
-      type: YodNavigatorType.pushReplacementNamed,
-    );
+    return _doPushReplacementNamed(context, routeName, arguments: arguments);
   }
 
   Future<dynamic> pushNamedAndRemoveUntil(
@@ -103,52 +84,71 @@ class YodNavigator extends NavigatorObserver {
       return null;
     }
 
-    return _doPush(
+    return _doPushNamedAndRemoveUntil(
       context,
       routeName,
-      routePop: routePop,
+      routePop,
       arguments: arguments,
-      type: YodNavigatorType.pushNamedAndRemoveUntil,
     );
   }
 
-  Future<dynamic> _doPush(
+  Future<dynamic> pushNamedAndRemoveAll(
     BuildContext context,
     String routeName, {
-    String? routePop,
-    Object? arguments,
-    required YodNavigatorType type,
+    Map<String, dynamic>? arguments,
   }) async {
-    final route = Navigator.of(context);
-
-    final routerMap = {
-      YodNavigatorType.pushNamed: route.pushNamed(
-        routeName,
-        arguments: arguments,
-      ),
-      YodNavigatorType.pushReplacementNamed: route.pushReplacementNamed(
-        routeName,
-        arguments: arguments,
-      ),
-      YodNavigatorType.pushNamedAndRemoveUntil: route.pushNamedAndRemoveUntil(
-        routeName,
-        ModalRoute.withName(routePop ?? ''),
-        arguments: arguments,
-      ),
-      YodNavigatorType.pushNamedAndRemoveRemoveAll: route
-          .pushNamedAndRemoveUntil(routeName, (routePop) {
-            if (routePop.isFirst == true) {
-              return routePop.settings.name == '_mainRoute';
-            }
-
-            return false;
-          }, arguments: arguments),
-    };
-
-    if (routerMap[type] == null) {
-      return Future.value(null);
+    if (!context.mounted) {
+      print(
+        '#->>> CoreNavigator().pushAndRemoveUntil(...) owner context not mounted',
+      );
+      return null;
     }
 
-    return routerMap[type];
+    return _doPushNamedAndRemoveAll(context, routeName, arguments: arguments);
+  }
+
+  Future<dynamic> _doPushNamed(
+    BuildContext context,
+    String routeName, {
+    Object? arguments,
+  }) {
+    return Navigator.of(context).pushNamed(routeName, arguments: arguments);
+  }
+
+  Future<dynamic> _doPushReplacementNamed(
+    BuildContext context,
+    String routeName, {
+    Object? arguments,
+  }) {
+    return Navigator.of(
+      context,
+    ).pushReplacementNamed(routeName, arguments: arguments);
+  }
+
+  Future<dynamic> _doPushNamedAndRemoveUntil(
+    BuildContext context,
+    String routeName,
+    String routePop, {
+    Object? arguments,
+  }) {
+    return Navigator.of(context).pushNamedAndRemoveUntil(
+      routeName,
+      ModalRoute.withName(routePop),
+      arguments: arguments,
+    );
+  }
+
+  Future<dynamic> _doPushNamedAndRemoveAll(
+    BuildContext context,
+    String routeName, {
+    Object? arguments,
+  }) {
+    return Navigator.of(context).pushNamedAndRemoveUntil(routeName, (routePop) {
+      if (routePop.isFirst == true) {
+        return routePop.settings.name == '_mainRoute';
+      }
+
+      return false;
+    }, arguments: arguments);
   }
 }
