@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 class YodNavigator extends NavigatorObserver {
   @override
@@ -92,7 +93,7 @@ class YodNavigator extends NavigatorObserver {
     );
   }
 
-  Future<dynamic> pushNamedAndRemoveAll(
+  Future<dynamic> go(
     BuildContext context,
     String routeName, {
     Map<String, dynamic>? arguments,
@@ -104,7 +105,7 @@ class YodNavigator extends NavigatorObserver {
       return null;
     }
 
-    return _doPushNamedAndRemoveAll(context, routeName, arguments: arguments);
+    return _go(context, routeName, arguments: arguments);
   }
 
   Future<dynamic> _doPushNamed(
@@ -112,43 +113,43 @@ class YodNavigator extends NavigatorObserver {
     String routeName, {
     Object? arguments,
   }) {
-    return Navigator.of(context).pushNamed(routeName, arguments: arguments);
+    // return Navigator.of(context).pushNamed(routeName, arguments: arguments);
+    return context.push(routeName, extra: arguments);
   }
 
-  Future<dynamic> _doPushReplacementNamed(
+  void _doPushReplacementNamed(
     BuildContext context,
     String routeName, {
     Object? arguments,
   }) {
-    return Navigator.of(
-      context,
-    ).pushReplacementNamed(routeName, arguments: arguments);
+    // return Navigator.of(
+    //   context,
+    // ).pushReplacementNamed(routeName, arguments: arguments);
+    return context.pushReplacement(routeName, extra: arguments);
   }
 
-  Future<dynamic> _doPushNamedAndRemoveUntil(
+  void _doPushNamedAndRemoveUntil(
     BuildContext context,
     String routeName,
     String routePop, {
     Object? arguments,
   }) {
-    return Navigator.of(context).pushNamedAndRemoveUntil(
-      routeName,
-      ModalRoute.withName(routePop),
-      arguments: arguments,
-    );
+    // return Navigator.of(context).pushNamedAndRemoveUntil(
+    //   routeName,
+    //   ModalRoute.withName(routePop),
+    //   arguments: arguments,
+    // );
+    return context.pushReplacementNamed(routeName, extra: arguments);
   }
 
-  Future<dynamic> _doPushNamedAndRemoveAll(
-    BuildContext context,
-    String routeName, {
-    Object? arguments,
-  }) {
-    return Navigator.of(context).pushNamedAndRemoveUntil(routeName, (routePop) {
-      if (routePop.isFirst == true) {
-        return routePop.settings.name == '_mainRoute';
-      }
+  void _go(BuildContext context, String routeName, {Object? arguments}) {
+    // return Navigator.of(context).pushNamedAndRemoveUntil(routeName, (routePop) {
+    //   if (routePop.isFirst == true) {
+    //     return routePop.settings.name == '_mainRoute';
+    //   }
 
-      return false;
-    }, arguments: arguments);
+    //   return false;
+    // }, arguments: arguments);
+    return context.go(routeName, extra: arguments);
   }
 }
