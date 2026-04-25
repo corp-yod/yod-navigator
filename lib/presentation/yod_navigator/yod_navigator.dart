@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:yod_navigator/src/common_interface/tabcontroller/tabcontroller_interface.dart';
@@ -14,37 +15,72 @@ class YodNavigator extends NavigatorObserver {
   YodNavigator._();
   static final YodNavigator _instance = YodNavigator._();
 
-  Map<String, TabcontrollerInterface>? _appTabControllerMap = {};
+  final Map<String, TabcontrollerInterface> _appTabControllerMap = {};
+  final List<RouteHistory> _routeHistory = [];
 
   final String _mainRoute = '/main';
   final String mainAppTravelToGether = '/mainAppTravelToGether';
 
   @override
   void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
-    print('#->>> didPush ${route.settings.name}');
-  }
+    _routeHistory.add(RouteHistory(routeName: route.settings.name.toString()));
 
-  @override
-  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
-    print('#->>> didPop ${route.settings.name}');
-  }
-
-  @override
-  void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) {
-    print('#->>> didRemove ${route.settings.name}');
+    if (kDebugMode) {
+      final List<String> routeNames = _routeHistory
+          .map((route) => route.routeName)
+          .toList();
+      print('YodNavigator didPush: $routeNames');
+    }
   }
 
   @override
   void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {
-    print(
-      '#->>> didReplace ${oldRoute?.settings.name} -> ${newRoute?.settings.name}',
+    if (_routeHistory.isNotEmpty) {
+      _routeHistory.removeLast();
+    }
+
+    _routeHistory.add(
+      RouteHistory(routeName: newRoute!.settings.name.toString()),
     );
+
+    if (kDebugMode) {
+      final List<String> routeNames = _routeHistory
+          .map((route) => route.routeName)
+          .toList();
+      print('YodNavigator didReplace: $routeNames');
+    }
+  }
+
+  @override
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    _routeHistory.removeLast();
+
+    if (kDebugMode) {
+      final List<String> routeNames = _routeHistory
+          .map((route) => route.routeName)
+          .toList();
+      print('YodNavigator didPop: $routeNames');
+    }
+  }
+
+  @override
+  void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    _routeHistory.remove(
+      RouteHistory(routeName: route.settings.name.toString()),
+    );
+
+    if (kDebugMode) {
+      final List<String> routeNames = _routeHistory
+          .map((route) => route.routeName)
+          .toList();
+      print('YodNavigator didRemove: $routeNames');
+    }
   }
 
   @override
   void didChangeTop(Route<dynamic> topRoute, Route<dynamic>? previousTopRoute) {
     print(
-      '#->>> didChangeTop ${previousTopRoute?.settings.name} -> ${topRoute.settings.name}',
+      'YodNavigator didChangeTop: ${previousTopRoute?.settings.name} -> ${topRoute.settings.name}',
     );
   }
 
@@ -53,21 +89,23 @@ class YodNavigator extends NavigatorObserver {
     Route<dynamic> route,
     Route<dynamic>? previousRoute,
   ) {
-    print('#->>> didStartUserGesture ${route.settings.name}');
+    print('YodNavigator didStartUserGesture: ${route.settings.name}');
   }
 
   @override
   void didStopUserGesture() {
-    print('#->>> didStopUserGesture');
+    print('YodNavigator didStopUserGesture');
   }
 
+  // Method to register TabController for each app
   void registerTabController(
     TabcontrollerInterface appTabController, {
     required CONTROLLERAPP controllerApp,
   }) {
-    _appTabControllerMap?[controllerApp.name] = appTabController;
+    _appTabControllerMap[controllerApp.name] = appTabController;
   }
 
+  // Method to animate to a specific tab in the registered TabController
   Future<dynamic> tabAnimateTo(
     BuildContext context,
     NavBarName tabName, {
@@ -76,7 +114,7 @@ class YodNavigator extends NavigatorObserver {
     bool reload = false,
   }) async {
     print(
-      '#->>> tabAnimateTo appTabControllerMap ${_appTabControllerMap?[controllerApp?.name]?.getTabcontroller.length}, $controllerApp -> $tabName',
+      '#->>> tabAnimateTo appTabControllerMap ${_appTabControllerMap[controllerApp?.name]?.getTabcontroller.length}, $controllerApp -> $tabName',
     );
 
     switch (controllerApp) {
@@ -91,7 +129,7 @@ class YodNavigator extends NavigatorObserver {
       default:
     }
 
-    _appTabControllerMap?[controllerApp?.name]?.animateTo(
+    _appTabControllerMap[controllerApp?.name]?.animateTo(
       tabName,
       context,
       reload: reload,
@@ -99,6 +137,7 @@ class YodNavigator extends NavigatorObserver {
     return null;
   }
 
+  // Method to get arguments from the current route
   Future<Map<String, dynamic>?> getArguments(BuildContext context) async {
     GoRouterState state = GoRouterState.of(context);
     final result = await Future.microtask(
@@ -108,13 +147,27 @@ class YodNavigator extends NavigatorObserver {
     return result;
   }
 
+  // Method to get path parameters from the current route
+  Future<Map<String, dynamic>?> getPathParameters(BuildContext context) async {
+    GoRouterState state = GoRouterState.of(context);
+    final result = await Future.microtask(
+      () => state.pathParameters as Map<String, dynamic>?,
+    );
+
+    return result;
+  }
+
+  // |----------------------------------------------------------------------------------------------|
+  // |------------------ Public Methods for Navigation Actions (Using go_router) -------------------|
+  // |----------------------------------------------------------------------------------------------|
+
   Future<dynamic> push(
     BuildContext context,
     String routeName, {
     Map<String, dynamic>? arguments,
   }) async {
     if (!context.mounted) {
-      print('#->>> CoreNavigator().pushNamed(...) owner context not mounted');
+      print('#->>> YodNavigator().push(...) owner context not mounted');
       return null;
     }
 
@@ -124,29 +177,73 @@ class YodNavigator extends NavigatorObserver {
   Future<dynamic> pushNamed(
     BuildContext context,
     String routeName, {
+    Map<String, String> pathParameters = const <String, String>{},
+    Map<String, dynamic> queryParameters = const <String, dynamic>{},
     Map<String, dynamic>? arguments,
   }) async {
     if (!context.mounted) {
-      print('#->>> CoreNavigator().pushNamed(...) owner context not mounted');
+      print('#->>> YodNavigator().pushNamed(...) owner context not mounted');
       return null;
     }
 
-    return _doPushNamed(context, routeName, arguments: arguments);
+    return _doPushNamed(
+      context,
+      routeName,
+      pathParameters: pathParameters,
+      queryParameters: queryParameters,
+      arguments: arguments,
+    );
   }
 
-  Future<dynamic> pushReplacementNamed(
+  Future<dynamic> go(
+    BuildContext context,
+    String routeName, {
+    Map<String, dynamic>? arguments,
+  }) async {
+    if (!context.mounted) {
+      print('#->>> YodNavigator().go(...) owner context not mounted');
+      return null;
+    }
+
+    return _doGo(context, routeName, arguments: arguments);
+  }
+
+  Future<dynamic> goNamed(
+    BuildContext context,
+    String routeName, {
+    Map<String, String> pathParameters = const <String, String>{},
+    Map<String, dynamic> queryParameters = const <String, dynamic>{},
+    Map<String, dynamic>? arguments,
+    String? fragment,
+  }) async {
+    if (!context.mounted) {
+      print('#->>> YodNavigator().goNamed(...) owner context not mounted');
+      return null;
+    }
+
+    return _doGoNamed(
+      context,
+      routeName,
+      pathParameters: pathParameters,
+      queryParameters: queryParameters,
+      arguments: arguments,
+      fragment: fragment,
+    );
+  }
+
+  Future<dynamic> pushReplacement(
     BuildContext context,
     String routeName, {
     Map<String, dynamic>? arguments,
   }) async {
     if (!context.mounted) {
       print(
-        '#->>> CoreNavigator().pushReplacementNamed(...) owner context not mounted',
+        '#->>> YodNavigator().pushReplacement(...) owner context not mounted',
       );
       return null;
     }
 
-    return _doPushReplacementNamed(context, routeName, arguments: arguments);
+    return _doPushReplacement(context, routeName, arguments: arguments);
   }
 
   Future<dynamic> pushNamedAndRemoveUntil(
@@ -157,7 +254,7 @@ class YodNavigator extends NavigatorObserver {
   }) async {
     if (!context.mounted) {
       print(
-        '#->>> CoreNavigator().pushAndRemoveUntil(...) owner context not mounted',
+        '#->>> YodNavigator().pushAndRemoveUntil(...) owner context not mounted',
       );
       return null;
     }
@@ -170,35 +267,21 @@ class YodNavigator extends NavigatorObserver {
     );
   }
 
-  Future<dynamic> go(
+  pop(BuildContext context, {Map<String, dynamic>? arguments}) {
+    _doPop(context, arguments);
+  }
+
+  popUntil(
     BuildContext context,
     String routeName, {
     Map<String, dynamic>? arguments,
-  }) async {
-    if (!context.mounted) {
-      print(
-        '#->>> CoreNavigator().pushAndRemoveUntil(...) owner context not mounted',
-      );
-      return null;
-    }
-
-    return _doGo(context, routeName, arguments: arguments);
+  }) {
+    _doPopUntil(context, routeName, arguments);
   }
 
-  Future<dynamic> goNamed(
-    BuildContext context,
-    String routeName, {
-    Map<String, dynamic>? arguments,
-  }) async {
-    if (!context.mounted) {
-      print(
-        '#->>> CoreNavigator().pushAndRemoveUntil(...) owner context not mounted',
-      );
-      return null;
-    }
-
-    return _doGoNamed(context, routeName, arguments: arguments);
-  }
+  // |----------------------------------------------------------------------------------------------|
+  // |------------------ Private Methods for Navigation Actions (Using go_router) ------------------|
+  // |----------------------------------------------------------------------------------------------|
 
   Future<dynamic> _doPush(
     BuildContext context,
@@ -212,43 +295,59 @@ class YodNavigator extends NavigatorObserver {
   Future<dynamic> _doPushNamed(
     BuildContext context,
     String routeName, {
+    Map<String, String> pathParameters = const <String, String>{},
+    Map<String, dynamic> queryParameters = const <String, dynamic>{},
     Object? arguments,
   }) {
-    // return Navigator.of(context).pushNamed(routeName, arguments: arguments);
-    return context.pushNamed(routeName, extra: arguments);
-  }
-
-  void _doPushReplacementNamed(
-    BuildContext context,
-    String routeName, {
-    Object? arguments,
-  }) {
-    // return Navigator.of(
-    //   context,
-    // ).pushReplacementNamed(routeName, arguments: arguments);
-    return context.pushReplacement(routeName, extra: arguments);
-  }
-
-  void _doPushNamedAndRemoveUntil(
-    BuildContext context,
-    String routeName,
-    String routePop, {
-    Object? arguments,
-  }) {
-    // return Navigator.of(context).pushNamedAndRemoveUntil(
-    //   routeName,
-    //   ModalRoute.withName(routePop),
-    //   arguments: arguments,
-    // );
-    return context.pushReplacementNamed(routeName, extra: arguments);
+    return context.pushNamed(
+      routeName,
+      pathParameters: pathParameters,
+      queryParameters: queryParameters,
+      extra: arguments,
+    );
   }
 
   void _doGo(BuildContext context, String routeName, {Object? arguments}) {
     return context.go(routeName, extra: arguments);
   }
 
-  void _doGoNamed(BuildContext context, String routeName, {Object? arguments}) {
-    return context.goNamed(routeName, extra: arguments);
+  void _doGoNamed(
+    BuildContext context,
+    String routeName, {
+    Map<String, String> pathParameters = const <String, String>{},
+    Map<String, dynamic> queryParameters = const <String, dynamic>{},
+    Object? arguments,
+    String? fragment,
+  }) {
+    return context.goNamed(
+      routeName,
+      pathParameters: pathParameters,
+      queryParameters: queryParameters,
+      extra: arguments,
+      fragment: fragment,
+    );
+  }
+
+  void _doPushReplacement(
+    BuildContext context,
+    String routeName, {
+    Object? arguments,
+  }) {
+    return context.pushReplacement(routeName, extra: arguments);
+  }
+
+  //TODO pushNamedAndRemoveUntil ยังไม่รองรับต้องแก้ไขให้รองรับในอนาคต
+  void _doPushNamedAndRemoveUntil(
+    BuildContext context,
+    String routeName,
+    String routePop, {
+    Object? arguments,
+  }) {
+    // return context.pushReplacementNamed(routeName, extra: arguments);
+  }
+
+  void _doPop<T extends Object?>(BuildContext context, [T? arguments]) {
+    return context.pop(arguments);
   }
 
   void _doPopUntil<T extends Object?>(
@@ -267,4 +366,22 @@ class YodNavigator extends NavigatorObserver {
       context.pop(arguments);
     }
   }
+
+  // -----------------------------------------------------------------------------------------------|
+  // |------------------ Private Methods for Navigation Actions (Using go_router) ------------------|
+  // -----------------------------------------------------------------------------------------------|
+}
+
+class RouteHistory {
+  RouteHistory({required this.routeName});
+
+  String routeName;
+
+  @override
+  bool operator ==(Object other) {
+    return other is RouteHistory && routeName == other.routeName;
+  }
+
+  // @override
+  // int get hashCode => routeName.hashCode;
 }
