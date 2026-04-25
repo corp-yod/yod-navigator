@@ -21,6 +21,14 @@ class YodNavigator extends NavigatorObserver {
   final String _mainRoute = '/main';
   final String mainAppTravelToGether = '/mainAppTravelToGether';
 
+  @visibleForTesting
+  List<RouteHistory> get routeHistory => List.unmodifiable(_routeHistory);
+
+  @visibleForTesting
+  void clearRouteHistory() {
+    _routeHistory.clear();
+  }
+
   @override
   void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
     _routeHistory.add(RouteHistory(routeName: route.settings.name.toString()));
@@ -31,6 +39,7 @@ class YodNavigator extends NavigatorObserver {
           .toList();
       print('YodNavigator didPush: $routeNames');
     }
+    super.didPush(route, previousRoute);
   }
 
   @override
@@ -49,6 +58,8 @@ class YodNavigator extends NavigatorObserver {
           .toList();
       print('YodNavigator didReplace: $routeNames');
     }
+
+    super.didReplace(newRoute: newRoute, oldRoute: oldRoute);
   }
 
   @override
@@ -61,6 +72,7 @@ class YodNavigator extends NavigatorObserver {
           .toList();
       print('YodNavigator didPop: $routeNames');
     }
+    super.didPop(route, previousRoute);
   }
 
   @override
@@ -75,6 +87,7 @@ class YodNavigator extends NavigatorObserver {
           .toList();
       print('YodNavigator didRemove: $routeNames');
     }
+    super.didRemove(route, previousRoute);
   }
 
   @override
@@ -82,6 +95,7 @@ class YodNavigator extends NavigatorObserver {
     print(
       'YodNavigator didChangeTop: ${previousTopRoute?.settings.name} -> ${topRoute.settings.name}',
     );
+    super.didChangeTop(topRoute, previousTopRoute);
   }
 
   @override
@@ -90,11 +104,13 @@ class YodNavigator extends NavigatorObserver {
     Route<dynamic>? previousRoute,
   ) {
     print('YodNavigator didStartUserGesture: ${route.settings.name}');
+    super.didStartUserGesture(route, previousRoute);
   }
 
   @override
   void didStopUserGesture() {
     print('YodNavigator didStopUserGesture');
+    super.didStopUserGesture();
   }
 
   // Method to register TabController for each app
@@ -356,10 +372,13 @@ class YodNavigator extends NavigatorObserver {
     T? arguments,
   ]) {
     final router = GoRouter.of(context);
-    final matchedLocation =
-        router.routerDelegate.currentConfiguration.matches.last.matchedLocation;
-
-    while (matchedLocation != routeName) {
+    while (router
+            .routerDelegate
+            .currentConfiguration
+            .matches
+            .last
+            .matchedLocation !=
+        routeName) {
       if (!context.canPop()) {
         return;
       }
